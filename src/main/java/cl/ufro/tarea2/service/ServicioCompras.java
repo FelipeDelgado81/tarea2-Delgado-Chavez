@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.springframework.stereotype.Service;
 
@@ -55,5 +56,17 @@ public class ServicioCompras {
         }
 
         return new RespuestaCompras(unidadCsv, comprasConvertidas, totalPesos);
+    }
+
+    public CompraConvertida obtenerDetalle(int id) throws IOException {
+        List<Compra> compras = lectorCompras.leerCompras();
+
+        for (Compra compra : compras) {
+            if (compra.getId() == id) {
+                return convertirCompra(compra);
+            }
+        }
+
+        throw new NoSuchElementException("No existe una compra con id " + id + ".");
     }
 }
