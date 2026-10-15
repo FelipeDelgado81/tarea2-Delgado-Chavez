@@ -26,8 +26,8 @@ class ClienteIndicadoresTest {
     void iniciarServidor() throws IOException {
         servidor = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         servidor.start();
-        String url = "http://127.0.0.1:" + servidor.getAddress().getPort() + "/api";
-        cliente = new ClienteIndicadores(url);
+        String url = "http://127.0.0.1:" + servidor.getAddress().getPort();
+        cliente = new ClienteIndicadores(url + "/uf-2026.json", url + "/dolar-2026.json");
     }
 
     @AfterEach
@@ -39,7 +39,7 @@ class ClienteIndicadoresTest {
 
     @Test
     void consultaLaUfEnLaFechaDeLaCompra() {
-        responder("/api/uf/01-09-2026", 200,
+        responder("/uf-2026.json", 200,
                 "{\"codigo\":\"uf\",\"nombre\":\"Unidad de fomento\",\"serie\":["
                 + "{\"fecha\":\"2026-09-01T04:00:00.000Z\",\"valor\":40000.25}]}");
 
@@ -50,7 +50,7 @@ class ClienteIndicadoresTest {
 
     @Test
     void consultaUsdComoDolarEnLaFechaDeLaCompra() {
-        responder("/api/dolar/02-09-2026", 200,
+        responder("/dolar-2026.json", 200,
                 "{\"codigo\":\"dolar\",\"serie\":["
                 + "{\"fecha\":\"2026-09-02T04:00:00.000Z\",\"valor\":950.50}]}");
 
@@ -61,7 +61,7 @@ class ClienteIndicadoresTest {
 
     @Test
     void informaSiNoHayDatosParaLaFecha() {
-        responder("/api/uf/01-09-2026", 200, "{\"codigo\":\"uf\",\"serie\":[]}");
+        responder("/uf-2026.json", 200, "{\"codigo\":\"uf\",\"serie\":[]}");
 
         assertThrows(RestClientException.class,
                 () -> cliente.obtenerValor("UF", LocalDate.of(2026, 9, 1)));
@@ -69,7 +69,7 @@ class ClienteIndicadoresTest {
 
     @Test
     void rechazaUnValorDeOtraFecha() {
-        responder("/api/uf/01-09-2026", 200,
+        responder("/uf-2026.json", 200,
                 "{\"codigo\":\"uf\",\"serie\":["
                 + "{\"fecha\":\"2026-08-31T04:00:00.000Z\",\"valor\":40000}]}");
 
@@ -79,7 +79,7 @@ class ClienteIndicadoresTest {
 
     @Test
     void rechazaUnValorNulo() {
-        responder("/api/uf/01-09-2026", 200,
+        responder("/uf-2026.json", 200,
                 "{\"codigo\":\"uf\",\"serie\":["
                 + "{\"fecha\":\"2026-09-01T04:00:00.000Z\",\"valor\":null}]}");
 
@@ -89,7 +89,7 @@ class ClienteIndicadoresTest {
 
     @Test
     void informaSiLaApiFalla() {
-        responder("/api/uf/01-09-2026", 503, "{}");
+        responder("/uf-2026.json", 503, "{}");
 
         assertThrows(RestClientException.class,
                 () -> cliente.obtenerValor("UF", LocalDate.of(2026, 9, 1)));
@@ -101,10 +101,84 @@ class ClienteIndicadoresTest {
                 () -> cliente.obtenerValor("EUR", LocalDate.of(2026, 9, 1)));
     }
 
+    @Test
+    void buscaLaFechaExactaEntreVariosDias() {
+        responder("/uf-2026.json", 200, """
+                {"codigo":"uf","serie":[
+                    {"fecha":"2026-09-02T04:00:00.000Z","valor":40002},
+                    {"fecha":"2026-08-31T04:00:00.000Z","valor":40000},
+                    {"fecha":"2026-09-01T04:00:00.000Z","valor":40001}
+                ]}
+                """);
+
+        assertEquals(new BigDecimal("40001"),
+                cliente.obtenerValor("UF", LocalDate.of(2026, 9, 1)));
+    }
+
+    @Test
+    void usaElUltimoDiaHabilAnteriorParaElDolarSinDependerDelOrden() {
+        responder("/dolar-2026.json", 200, """
+                {"codigo":"dolar","serie":[
+                    {"fecha":"2026-09-03T04:00:00.000Z","valor":920},
+                    {"fecha":"2026-09-07T03:00:00.000Z","valor":940},
+                    {"fecha":"2026-09-04T04:00:00.000Z","valor":930}
+                ]}
+                """);
+
+        assertEquals(new BigDecimal("930"),
+                cliente.obtenerValor("USD", LocalDate.of(2026, 9, 6)));
+    }
+
+    @Test
+    void prefiereElDolarDeLaFechaExactaSiEstaDisponible() {
+        responder("/dolar-2026.json", 200, """
+                {"codigo":"dolar","serie":[
+                    {"fecha":"2026-09-01T04:00:00.000Z","valor":930},
+                    {"fecha":"2026-09-02T04:00:00.000Z","valor":940}
+                ]}
+                """);
+
+        assertEquals(new BigDecimal("940"),
+                cliente.obtenerValor("USD", LocalDate.of(2026, 9, 2)));
+    }
+
+    @Test
+    void usaElDiaAnteriorDisponibleCuandoHayUnFeriado() {
+        responder("/dolar-2026.json", 200, """
+                {"codigo":"dolar","serie":[
+                    {"fecha":"2026-09-17T03:00:00.000Z","valor":930},
+                    {"fecha":"2026-09-21T03:00:00.000Z","valor":940}
+                ]}
+                """);
+
+        assertEquals(new BigDecimal("930"),
+                cliente.obtenerValor("USD", LocalDate.of(2026, 9, 18)));
+    }
+
+    @Test
+    void noUsaUnDolarDeUnaFechaFutura() {
+        responder("/dolar-2026.json", 200, """
+                {"codigo":"dolar","serie":[
+                    {"fecha":"2026-09-07T03:00:00.000Z","valor":940}
+                ]}
+                """);
+
+        assertThrows(RestClientException.class,
+                () -> cliente.obtenerValor("USD", LocalDate.of(2026, 9, 6)));
+    }
+
+    @Test
+    void informaSiElTextoDescargadoNoEsJsonValido() {
+        responder("/uf-2026.json", 200, "Servicio no disponible");
+
+        assertThrows(RestClientException.class,
+                () -> cliente.obtenerValor("UF", LocalDate.of(2026, 9, 1)));
+    }
+
     private void responder(String ruta, int estado, String json) {
         servidor.createContext(ruta, intercambio -> {
             byte[] contenido = json.getBytes(StandardCharsets.UTF_8);
-            intercambio.getResponseHeaders().set("Content-Type", "application/json");
+            intercambio.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
             intercambio.sendResponseHeaders(estado, contenido.length);
             try (OutputStream salida = intercambio.getResponseBody()) {
                 salida.write(contenido);
