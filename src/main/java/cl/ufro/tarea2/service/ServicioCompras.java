@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import cl.ufro.tarea2.model.Compra;
 import cl.ufro.tarea2.model.CompraConvertida;
+import cl.ufro.tarea2.model.CompraDetalle;
 import cl.ufro.tarea2.model.RespuestaCompras;
 
 @Service
@@ -58,12 +59,13 @@ public class ServicioCompras {
         return new RespuestaCompras(unidadCsv, comprasConvertidas, totalPesos);
     }
 
-    public CompraConvertida obtenerDetalle(int id) throws IOException {
+    public CompraDetalle obtenerDetalle(int id) throws IOException {
         List<Compra> compras = lectorCompras.leerCompras();
 
         for (Compra compra : compras) {
             if (compra.getId() == id) {
-                return convertirCompra(compra);
+                CompraConvertida convertida = convertirCompra(compra);
+                return new CompraDetalle(compra, convertida.getValorUnidad(), convertida.getMontoPesos());
             }
         }
 

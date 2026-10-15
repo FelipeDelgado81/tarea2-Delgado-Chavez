@@ -17,6 +17,7 @@ import org.springframework.web.client.RestClientException;
 
 import cl.ufro.tarea2.model.Compra;
 import cl.ufro.tarea2.model.CompraConvertida;
+import cl.ufro.tarea2.model.CompraDetalle;
 import cl.ufro.tarea2.model.RespuestaCompras;
 
 class ServicioComprasTest {
@@ -100,20 +101,33 @@ class ServicioComprasTest {
     }
 
     @Test
-    void devuelveLaCompraConvertidaAlBuscarDetallePorId() throws IOException {
+    void devuelveLaCompraConvertidaConSuUnidadAlBuscarDetallePorId() throws IOException {
         Compra primera = new Compra(3, "Escritorio", new BigDecimal("8"), "UF", LocalDate.of(2026, 9, 4));
         Compra segunda = new Compra(1, "Notebook", new BigDecimal("25.5"), "UF", LocalDate.of(2026, 9, 1));
         when(lector.leerCompras()).thenReturn(List.of(primera, segunda));
         when(cliente.obtenerValor("UF", segunda.getFecha())).thenReturn(new BigDecimal("40000.25"));
 
-        CompraConvertida resultado = servicio.obtenerDetalle(1);
+        CompraDetalle resultado = servicio.obtenerDetalle(1);
 
         assertEquals(1, resultado.getId());
         assertEquals("Notebook", resultado.getProducto());
         assertEquals(new BigDecimal("25.5"), resultado.getMonto());
+        assertEquals("UF", resultado.getUnidad());
         assertEquals(LocalDate.of(2026, 9, 1), resultado.getFecha());
         assertEquals(new BigDecimal("40000.25"), resultado.getValorUnidad());
         assertEquals(1020006, resultado.getMontoPesos());
+    }
+
+    @Test
+    void informaLaUnidadEnDolarDelDetalleDeUnaCompraUsd() throws IOException {
+        Compra compra = new Compra(2, "Monitor", new BigDecimal("180"), "USD", LocalDate.of(2026, 9, 2));
+        when(lector.leerCompras()).thenReturn(List.of(compra));
+        when(cliente.obtenerValor("USD", compra.getFecha())).thenReturn(new BigDecimal("900.10"));
+
+        CompraDetalle resultado = servicio.obtenerDetalle(2);
+
+        assertEquals("USD", resultado.getUnidad());
+        assertEquals(162018, resultado.getMontoPesos());
     }
 
     @Test
