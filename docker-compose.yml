@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    image: tarea2-compras:local
+    ports:
+      - "${APP_PORT:-3001}:${APP_PORT:-3001}"
+    environment:
+      APP_PORT: "${APP_PORT:-3001}"
+      CSV_PATH: /data/compras.csv
+      APP_ENV: production
+    volumes:
+      - ./compras.csv:/data/compras.csv:ro
