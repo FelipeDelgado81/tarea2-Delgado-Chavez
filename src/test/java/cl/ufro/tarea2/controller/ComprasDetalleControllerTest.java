@@ -67,6 +67,7 @@ class ComprasDetalleControllerTest {
                     "id": 3,
                     "producto": "Escritorio",
                     "monto": 8,
+                    "unidad": "UF",
                     "fecha": "2026-09-04",
                     "valor_unidad": 40000.25,
                     "monto_pesos": 320002
@@ -90,6 +91,7 @@ class ComprasDetalleControllerTest {
                     "id": 4,
                     "producto": "Teclado mecanico",
                     "monto": 95.9,
+                    "unidad": "USD",
                     "fecha": "2026-09-08",
                     "valor_unidad": 950.50,
                     "monto_pesos": 91153

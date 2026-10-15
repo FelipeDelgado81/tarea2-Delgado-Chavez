@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
 
-import cl.ufro.tarea2.model.CompraConvertida;
+import cl.ufro.tarea2.model.CompraDetalle;
 import cl.ufro.tarea2.service.ServicioCompras;
 
 @RestController
@@ -28,7 +28,7 @@ public class ComprasDetalleController {
     @GetMapping("/detalle/{id}")
     public ResponseEntity<?> obtenerDetalle(@PathVariable int id) {
         try {
-            CompraConvertida compra = servicioCompras.obtenerDetalle(id);
+            CompraDetalle compra = servicioCompras.obtenerDetalle(id);
             return ResponseEntity.ok(compra);
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
